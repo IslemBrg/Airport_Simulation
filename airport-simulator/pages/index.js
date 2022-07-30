@@ -1,69 +1,176 @@
 import Head from 'next/head'
 import Image from 'next/image'
-import styles from '../styles/Home.module.css'
+import styles from '../styles/Home.module.scss'
+import * as THREE from 'three'
+import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls'
 
 export default function Home() {
+  if (typeof window !== 'undefined') {
+    var lightON = false
+    //scene init
+    const scene = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera(75,window.innerWidth / window.innerHeight,0.1,5000)
+    const renderer = new THREE.WebGLRenderer({
+      canvas : document.querySelector('#Scene'),
+    })
+    const raycaster = new THREE.Raycaster()
+    const mouseClick = new THREE.Vector2()
+
+    renderer.setPixelRatio(window.devicePixelRatio)
+    renderer.setSize(window.innerWidth,window.innerHeight)
+    camera.position.setZ(480)
+    camera.position.setY(280)
+
+    //Animating Scene
+    function animate(){
+      requestAnimationFrame(animate)
+
+      renderer.render(scene,camera)
+
+      orbitControl.update()
+    }
+
+    //Stars creation
+    function addStar(){
+      const star = new THREE.Mesh(
+        new THREE.SphereGeometry(0.25,24,24),
+        new THREE.MeshBasicMaterial({color:0xffffff})
+      )
+      const [x,y,z] = Array(3).fill().map(()=> THREE.MathUtils.randFloatSpread(3000))
+      star.position.set(x,y,z)
+      scene.add(star)
+    }
+    Array(200).fill().forEach(addStar)
+
+    //Light Creation
+    const ambientLight = new THREE.AmbientLight()
+    scene.add(ambientLight)
+
+
+    //Terrain Creation
+    const terrain = new THREE.Mesh(
+      new THREE.BoxGeometry(60, 10, 700),
+      new THREE.MeshStandardMaterial( {
+        map: new THREE.TextureLoader().load('ground.jpg')
+      } )
+    );
+    terrain.userData.ground = true
+    scene.add(terrain)
+
+    //Runways Creation
+    const material = new THREE.MeshStandardMaterial( {
+      map: new THREE.TextureLoader().load('runway.jpg')
+    } )
+    const runway = new THREE.Mesh(
+      new THREE.BoxGeometry(30, 1, 650),
+      material
+    );
+    runway.position.setY(5)
+
+    runway.userData.clickable = true
+    runway.userData.name = 'runway'
+    scene.add(runway)
+
+    //runway bulbs Creation
+    const bulbs = new THREE.Group()
+    var bulbCount = 98 //how many bulbs on the runway (must be pair number)
+    var i = 0
+    var x = -290
+    function addBulb(){
+      i++;
+      const bulb = new THREE.Mesh(
+        new THREE.SphereGeometry(0.25,24,24),
+        new THREE.MeshBasicMaterial({color:0x008000})
+      )
+      const bulbLight = new THREE.PointLight(0x008000,40,1.5)
+      if (i<=bulbCount/2){
+        bulb.position.setX(12)
+        bulbLight.position.setX(12)
+        bulb.position.setZ(x)
+        bulbLight.position.setZ(x)
+        x+=12
+      }
+      if (i==bulbCount/2){x=-290}
+      if (i>bulbCount/2){
+        bulb.position.setX(-12)
+        bulbLight.position.setX(-12)
+        bulb.position.setZ(x)
+        bulbLight.position.setZ(x)
+        x+=12
+      }
+      bulbs.add(bulb)
+    }
+    Array(bulbCount).fill().forEach(addBulb)
+    bulbs.position.setY(6)
+    scene.add(bulbs)
+
+    //runway Light Creation
+    const lights = new THREE.Group()
+    var x = -290
+    i=0
+    function addBulbLight(){
+      i++;
+      const bulbLight = new THREE.PointLight(0x008000,40,1.5)
+      if (i<=bulbCount/2){
+        bulbLight.position.setX(12)
+        bulbLight.position.setZ(x)
+        x+=12
+      }
+      if (i==bulbCount/2){x=-290}
+      if (i>bulbCount/2){
+        bulbLight.position.setX(-12)
+        bulbLight.position.setZ(x)
+        x+=12
+      }
+      lights.add(bulbLight)
+    }
+    Array(bulbCount).fill().forEach(addBulbLight)
+    lights.position.setY(6)
+
+    //Runway Light Activation
+    function ActivateRunwayLights(){
+      scene.add(lights)
+    }
+    //runway Light Deactivation
+    function DeactivateRunwayLights(){
+      scene.remove(lights)
+    }
+
+    ActivateRunwayLights()
+    DeactivateRunwayLights()
+
+
+    //implementing Orbit Controls
+    const orbitControl = new OrbitControls(camera,renderer.domElement)
+
+    animate()
+
+    //Event Listeners
+    window.addEventListener('click',event =>{
+
+      // calculate pointer position in normalized device coordinates
+	    // (-1 to +1) for both components
+	    mouseClick.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	    mouseClick.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+      // update the picking ray with the camera and pointer position
+      raycaster.setFromCamera(mouseClick,camera)
+
+      // calculate objects intersecting the picking ray
+	    const found = raycaster.intersectObjects( scene.children );
+
+      if ((found.length > 0)&&(found[0].object.userData.clickable == true)){
+        if (lightON){DeactivateRunwayLights();lightON = false}
+        else{ActivateRunwayLights();lightON = true}
+      }
+
+    })
+
+  }
   return (
-    <div className={styles.container}>
-      <Head>
-        <title>Create Next App</title>
-        <meta name="description" content="Generated by create next app" />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
-      <main className={styles.main}>
-        <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
-
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.js</code>
-        </p>
-
-        <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h2>Documentation &rarr;</h2>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h2>Learn &rarr;</h2>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/canary/examples"
-            className={styles.card}
-          >
-            <h2>Examples &rarr;</h2>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-          >
-            <h2>Deploy &rarr;</h2>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
-        </div>
-      </main>
-
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <span className={styles.logo}>
-            <Image src="/vercel.svg" alt="Vercel Logo" width={72} height={16} />
-          </span>
-        </a>
-      </footer>
-    </div>
+    <>
+      <canvas id='Scene' className={styles.canvas}>
+      </canvas>
+    </>
   )
 }
