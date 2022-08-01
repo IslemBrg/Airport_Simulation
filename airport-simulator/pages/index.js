@@ -6,6 +6,7 @@ import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls'
 
 export default function Home() {
   if (typeof window !== 'undefined') {
+    var mouseMoved = false
     var lightON = false
     //scene init
     const scene = new THREE.Scene()
@@ -30,18 +31,6 @@ export default function Home() {
       orbitControl.update()
     }
 
-    //Stars creation
-    function addStar(){
-      const star = new THREE.Mesh(
-        new THREE.SphereGeometry(0.25,24,24),
-        new THREE.MeshBasicMaterial({color:0xffffff})
-      )
-      const [x,y,z] = Array(3).fill().map(()=> THREE.MathUtils.randFloatSpread(3000))
-      star.position.set(x,y,z)
-      scene.add(star)
-    }
-    Array(200).fill().forEach(addStar)
-
     //Light Creation
     const ambientLight = new THREE.AmbientLight()
     scene.add(ambientLight)
@@ -58,12 +47,9 @@ export default function Home() {
     scene.add(terrain)
 
     //Runways Creation
-    const material = new THREE.MeshStandardMaterial( {
-      map: new THREE.TextureLoader().load('runway.jpg')
-    } )
     const runway = new THREE.Mesh(
       new THREE.BoxGeometry(30, 1, 650),
-      material
+      new THREE.MeshStandardMaterial( {map: new THREE.TextureLoader().load('runway.jpg')} )
     );
     runway.position.setY(5)
 
@@ -82,20 +68,15 @@ export default function Home() {
         new THREE.SphereGeometry(0.25,24,24),
         new THREE.MeshBasicMaterial({color:0x008000})
       )
-      const bulbLight = new THREE.PointLight(0x008000,40,1.5)
       if (i<=bulbCount/2){
         bulb.position.setX(12)
-        bulbLight.position.setX(12)
         bulb.position.setZ(x)
-        bulbLight.position.setZ(x)
         x+=12
       }
       if (i==bulbCount/2){x=-290}
       if (i>bulbCount/2){
         bulb.position.setX(-12)
-        bulbLight.position.setX(-12)
         bulb.position.setZ(x)
-        bulbLight.position.setZ(x)
         x+=12
       }
       bulbs.add(bulb)
@@ -104,13 +85,17 @@ export default function Home() {
     bulbs.position.setY(6)
     scene.add(bulbs)
 
-    //runway Light Creation
+    //runway Fake Light Creation
     const lights = new THREE.Group()
     var x = -290
     i=0
     function addBulbLight(){
       i++;
-      const bulbLight = new THREE.PointLight(0x008000,40,1.5)
+      const bulbLight = new THREE.Mesh(
+        new THREE.CircleGeometry( 4, 32 ),
+        new THREE.MeshStandardMaterial( { map: new THREE.TextureLoader().load('fake light texture.png') , side: THREE.DoubleSide, transparent:true } )
+      )
+      bulbLight.rotateX(1.58)
       if (i<=bulbCount/2){
         bulbLight.position.setX(12)
         bulbLight.position.setZ(x)
@@ -137,7 +122,6 @@ export default function Home() {
     }
 
     ActivateRunwayLights()
-    DeactivateRunwayLights()
 
 
     //implementing Orbit Controls
@@ -146,6 +130,14 @@ export default function Home() {
     animate()
 
     //Event Listeners
+    
+      window.addEventListener('mousemove', event => {
+        if (mouseMoved == false){
+        DeactivateRunwayLights()
+        mouseMoved=true
+      }
+      })
+          
     window.addEventListener('click',event =>{
 
       // calculate pointer position in normalized device coordinates
